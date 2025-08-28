@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CollabBoard Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .room-controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        
+        .room-controls input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        
+        .room-controls button {
+            padding: 8px 16px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .room-controls button:hover {
+            background: #0056b3;
+        }
+        
+        .room-controls button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.info { background: #d1ecf1; color: #0c5460; }
+        
+        .drawing-area {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        #drawingCanvas {
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            cursor: crosshair;
+            background: white;
+        }
+        
+        .drawing-controls {
+            margin: 15px 0;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .drawing-controls label {
+            font-weight: bold;
+        }
+        
+        .drawing-controls input[type="color"] {
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .drawing-controls input[type="range"] {
+            width: 100px;
+        }
+        
+        .activity-log {
+            height: 200px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            background: #f8f9fa;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            border-radius: 4px;
+        }
+        
+        .log-entry {
+            margin: 2px 0;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+        
+        .log-entry.system { background: #e9ecef; }
+        .log-entry.drawing { background: #d1ecf1; }
+        .log-entry.error { background: #f8d7da; }
+        
+        .users-online {
+            margin-top: 15px;
+            padding: 10px;
+            background: #e9ecef;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 CollabBoard Test Interface</h1>
+        
+        <!-- Room Controls -->
+        <div class="room-controls">
+            <button id="createRoomBtn">Create New Room</button>
+            <input type="text" id="roomIdInput" placeholder="Enter Room ID (e.g., ABC123)" maxlength="6">
+            <button id="joinRoomBtn">Join Room</button>
+            <button id="leaveRoomBtn" disabled>Leave Room</button>
+        </div>
+        
+        <!-- Status Display -->
+        <div id="statusDisplay"></div>
+        
+        <!-- Drawing Area -->
+        <div class="drawing-area">
+            <canvas id="drawingCanvas" width="800" height="400" style="display: none;"></canvas>
+        </div>
+        
+        <!-- Drawing Controls -->
+        <div class="drawing-controls" id="drawingControls" style="display: none;">
+            <label for="colorPicker">Color:</label>
+            <input type="color" id="colorPicker" value="#000000">
+            
+            <label for="brushSize">Brush Size:</label>
+            <input type="range" id="brushSize" min="1" max="20" value="2">
+            <span id="brushSizeValue">2</span>px
+            
+            <button id="clearCanvasBtn">Clear Canvas</button>
+        </div>
+        
+        <!-- Activity Log -->
+        <h3>Activity Log</h3>
+        <div id="activityLog" class="activity-log"></div>
+        
+        <!-- Online Users -->
+        <div class="users-online">
+            <strong>Connection Status:</strong> <span id="connectionStatus">Disconnected</span>
+            <br>
+            <strong>Current Room:</strong> <span id="currentRoom">None</span>
+        </div>
+    </div>
+
+    <!-- SignalR Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
+    
+    <script>
+        // Configuration
+        const API_BASE_URL = 'http://localhost:5028';
+        const HUB_URL = `${API_BASE_URL}/drawingHub`;
+        
+        // Global variables
+        let connection = null;
+        let currentRoomId = null;
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        
+        // DOM Elements
+        const createRoomBtn = document.getElementById('createRoomBtn');
+        const joinRoomBtn = document.getElementById('joinRoomBtn');
+        const leaveRoomBtn = document.getElementById('leaveRoomBtn');
+        const roomIdInput = document.getElementById('roomIdInput');
+        const statusDisplay = document.getElementById('statusDisplay');
+        const drawingCanvas = document.getElementById('drawingCanvas');
+        const drawingControls = document.getElementById('drawingControls');
+        const colorPicker = document.getElementById('colorPicker');
+        const brushSize = document.getElementById('brushSize');
+        const brushSizeValue = document.getElementById('brushSizeValue');
+        const clearCanvasBtn = document.getElementById('clearCanvasBtn');
+        const activityLog = document.getElementById('activityLog');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const currentRoomDisplay = document.getElementById('currentRoom');
+        
+        const ctx = drawingCanvas.getContext('2d');
+        
+        // Initialize SignalR connection
+        async function initializeSignalR() {
+            connection = new signalR.HubConnectionBuilder()
+                .withUrl(HUB_URL, {
+                    skipNegotiation: false,
+                    transport: signalR.HttpTransportType.WebSockets | signalR.HttpTransportType.LongPolling
+                })
+                .configureLogging(signalR.LogLevel.Information)
+                .build();
+                
+            // Connection events
+            connection.onclose(() => {
+                connectionStatus.textContent = 'Disconnected';
+                logActivity('Connection lost', 'error');
+            });
+            
+            connection.onreconnected(() => {
+                connectionStatus.textContent = 'Connected';
+                logActivity('Reconnected to server', 'system');
+            });
+            
+            // Drawing events
+            connection.on('ReceiveDrawingEvent', (drawingEvent) => {
+                drawOnCanvas(drawingEvent);
+                logActivity(`Drawing: ${drawingEvent.type} at (${Math.round(drawingEvent.x)}, ${Math.round(drawingEvent.y)})`, 'drawing');
+            });
+            
+            connection.on('DrawingHistory', (history) => {
+                logActivity(`Received ${history.length} drawing events from history`, 'system');
+                history.forEach(event => drawOnCanvas(event));
+            });
+            
+            connection.on('ClearCanvas', () => {
+                ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+                logActivity('Canvas was cleared by another user', 'system');
+            });
+            
+            connection.on('UserJoined', (userId) => {
+                logActivity(`User ${userId.substring(0, 8)}... joined the room`, 'system');
+            });
+            
+            connection.on('UserLeft', (userId) => {
+                logActivity(`User ${userId.substring(0, 8)}... left the room`, 'system');
+            });
+            
+            connection.on('JoinRoomError', (message) => {
+                showStatus(message, 'error');
+                logActivity(`Join room error: ${message}`, 'error');
+            });
+            
+            connection.on('DrawingError', (message) => {
+                showStatus(message, 'error');
+                logActivity(`Drawing error: ${message}`, 'error');
+            });
+            
+            try {
+                await connection.start();
+                connectionStatus.textContent = 'Connected';
+                logActivity('Connected to SignalR hub', 'system');
+            } catch (err) {
+                connectionStatus.textContent = 'Connection Failed';
+                logActivity(`Connection failed: ${err}`, 'error');
+            }
+        }
+        
+        // Room Management
+        async function createRoom() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/room/create`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    roomIdInput.value = data.roomId;
+                    showStatus(`Room created: ${data.roomId}`, 'success');
+                    logActivity(`Created room: ${data.roomId}`, 'system');
+                } else {
+                    showStatus(data.message || 'Failed to create room', 'error');
+                }
+            } catch (err) {
+                showStatus('Network error creating room', 'error');
+                logActivity(`Create room error: ${err}`, 'error');
+            }
+        }
+        
+        async function joinRoom() {
+            const roomId = roomIdInput.value.trim().toUpperCase();
+            if (!roomId) {
+                showStatus('Please enter a room ID', 'error');
+                return;
+            }
+            
+            try {
+                // First verify room exists via REST API
+                const response = await fetch(`${API_BASE_URL}/api/room/join`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ roomId })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    // Join via SignalR
+                    if (connection.state === signalR.HubConnectionState.Connected) {
+                        await connection.invoke('JoinRoom', roomId);
+                        currentRoomId = roomId;
+                        currentRoomDisplay.textContent = roomId;
+                        
+                        // Show drawing interface
+                        drawingCanvas.style.display = 'block';
+                        drawingControls.style.display = 'flex';
+                        
+                        // Update button states
+                        joinRoomBtn.disabled = true;
+                        leaveRoomBtn.disabled = false;
+                        createRoomBtn.disabled = true;
+                        
+                        showStatus(`Joined room: ${roomId}`, 'success');
+                        logActivity(`Joined room: ${roomId}`, 'system');
+                    } else {
+                        showStatus('SignalR not connected', 'error');
+                    }
+                } else {
+                    showStatus(data.message || 'Failed to join room', 'error');
+                }
+            } catch (err) {
+                showStatus('Network error joining room', 'error');
+                logActivity(`Join room error: ${err}`, 'error');
+            }
+        }
+        
+        async function leaveRoom() {
+            if (!currentRoomId || !connection) return;
+            
+            try {
+                await connection.invoke('LeaveRoom', currentRoomId);
+                
+                // Reset UI
+                currentRoomId = null;
+                currentRoomDisplay.textContent = 'None';
+                drawingCanvas.style.display = 'none';
+                drawingControls.style.display = 'none';
+                
+                // Clear canvas
+                ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+                
+                // Update button states
+                joinRoomBtn.disabled = false;
+                leaveRoomBtn.disabled = true;
+                createRoomBtn.disabled = false;
+                
+                showStatus('Left the room', 'info');
+                logActivity('Left the room', 'system');
+            } catch (err) {
+                logActivity(`Leave room error: ${err}`, 'error');
+            }
+        }
+        
+        // Drawing Functions
+        function drawOnCanvas(drawingEvent) {
+            ctx.strokeStyle = drawingEvent.color;
+            ctx.lineWidth = drawingEvent.lineWidth;
+            ctx.lineCap = 'round';
+            
+            if (drawingEvent.type === 'startDrawing') {
+                ctx.beginPath();
+                ctx.moveTo(drawingEvent.x, drawingEvent.y);
+            } else if (drawingEvent.type === 'drawing') {
+                ctx.lineTo(drawingEvent.x, drawingEvent.y);
+                ctx.stroke();
+            } else if (drawingEvent.type === 'stopDrawing') {
+                ctx.stroke();
+            }
+        }
+        
+        async function sendDrawingEvent(type, x, y) {
+            if (!connection || !currentRoomId) return;
+            
+            const drawingEvent = {
+                type: type,
+                x: x,
+                y: y,
+                color: colorPicker.value,
+                lineWidth: parseInt(brushSize.value),
+                userId: '',
+                timestamp: new Date().toISOString()
+            };
+            
+            try {
+                await connection.invoke('SendDrawingEvent', currentRoomId, drawingEvent);
+            } catch (err) {
+                logActivity(`Send drawing event error: ${err}`, 'error');
+            }
+        }
+        
+        // Canvas Event Handlers
+        drawingCanvas.addEventListener('mousedown', (e) => {
+            if (!currentRoomId) return;
+            
+            isDrawing = true;
+            const rect = drawingCanvas.getBoundingClientRect();
+            lastX = e.clientX - rect.left;
+            lastY = e.clientY - rect.top;
+            
+            sendDrawingEvent('startDrawing', lastX, lastY);
+        });
+        
+        drawingCanvas.addEventListener('mousemove', (e) => {
+            if (!isDrawing || !currentRoomId) return;
+            
+            const rect = drawingCanvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            sendDrawingEvent('drawing', x, y);
+            
+            lastX = x;
+            lastY = y;
+        });
+        
+        drawingCanvas.addEventListener('mouseup', () => {
+            if (!isDrawing || !currentRoomId) return;
+            
+            isDrawing = false;
+            sendDrawingEvent('stopDrawing', lastX, lastY);
+        });
+        
+        drawingCanvas.addEventListener('mouseleave', () => {
+            if (isDrawing && currentRoomId) {
+                isDrawing = false;
+                sendDrawingEvent('stopDrawing', lastX, lastY);
+            }
+        });
+        
+        // UI Helper Functions
+        function showStatus(message, type) {
+            statusDisplay.innerHTML = `<div class="status ${type}">${message}</div>`;
+            setTimeout(() => {
+                statusDisplay.innerHTML = '';
+            }, 5000);
+        }
+        
+        function logActivity(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${type}`;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            
+            activityLog.appendChild(logEntry);
+            activityLog.scrollTop = activityLog.scrollHeight;
+        }
+        
+        // Event Listeners
+        createRoomBtn.addEventListener('click', createRoom);
+        joinRoomBtn.addEventListener('click', joinRoom);
+        leaveRoomBtn.addEventListener('click', leaveRoom);
+        
+        brushSize.addEventListener('input', (e) => {
+            brushSizeValue.textContent = e.target.value;
+        });
+        
+        clearCanvasBtn.addEventListener('click', async () => {
+            if (!currentRoomId || !connection) {
+                // If not in a room, just clear locally
+                ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+                return;
+            }
+            
+            try {
+                // Send clear canvas event to all users in the room
+                await connection.invoke('ClearCanvas', currentRoomId);
+                logActivity('Canvas cleared', 'system');
+            } catch (err) {
+                logActivity(`Clear canvas error: ${err}`, 'error');
+                // Fallback to local clear if SignalR fails
+                ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+            }
+        });
+        
+        // Initialize everything
+        document.addEventListener('DOMContentLoaded', () => {
+            logActivity('Application started', 'system');
+            initializeSignalR();
+        });
+    </script>
+</body>
+</html>

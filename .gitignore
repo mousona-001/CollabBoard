@@ -1,0 +1,17 @@
+# Build folders
+bin/
+obj/
+
+# Visual Studio / VS Code settings
+.vscode/
+*.user
+*.suo
+*.cache
+*.log
+*.vs/
+
+# Other files to ignore
+*.dll
+*.exe
+*.db
+*.pdb
