@@ -21,3 +21,11 @@ public class JoinRoomResponse
     public string Message { get; set; } = string.Empty;
     public List<DrawingEvent>? DrawingHistory { get; set; }
 }
+
+public class ConnectedUser
+{
+    public string ConnectionId { get; set; } = string.Empty;
+    public string UserName { get; set; } = string.Empty;
+    public DateTime JoinedAt { get; set; } = DateTime.UtcNow;
+    public bool IsDrawing { get; set; } = false;
+}

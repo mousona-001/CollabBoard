@@ -3,175 +3,551 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CollabBoard Test</title>
+    <title>CollabBoard - Collaborative Drawing</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
         body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            background: #f5f5f5;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
         }
         
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             background: white;
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 1.1rem;
         }
         
         .room-controls {
             display: flex;
             gap: 15px;
-            margin-bottom: 20px;
-            padding: 15px;
+            margin-bottom: 25px;
+            padding: 20px;
             background: #f8f9fa;
-            border-radius: 5px;
+            border-radius: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
         }
         
         .room-controls input {
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+            padding: 12px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
             font-size: 16px;
+            transition: border-color 0.3s ease;
+            min-width: 150px;
+        }
+        
+        .room-controls input:focus {
+            outline: none;
+            border-color: #667eea;
         }
         
         .room-controls button {
-            padding: 8px 16px;
-            background: #007bff;
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
             color: white;
             border: none;
-            border-radius: 4px;
+            border-radius: 8px;
             cursor: pointer;
             font-size: 14px;
+            font-weight: 600;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
         
-        .room-controls button:hover {
-            background: #0056b3;
+        .room-controls button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
         }
         
         .room-controls button:disabled {
             background: #6c757d;
             cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
         }
         
         .status {
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 4px;
-            font-weight: bold;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 10px;
+            font-weight: 600;
+            text-align: center;
+            animation: slideIn 0.3s ease;
         }
         
-        .status.success { background: #d4edda; color: #155724; }
-        .status.error { background: #f8d7da; color: #721c24; }
-        .status.info { background: #d1ecf1; color: #0c5460; }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .status.success { 
+            background: linear-gradient(135deg, #d4edda, #c3e6cb); 
+            color: #155724; 
+            border-left: 4px solid #28a745;
+        }
+        
+        .status.error { 
+            background: linear-gradient(135deg, #f8d7da, #f1b0b7); 
+            color: #721c24; 
+            border-left: 4px solid #dc3545;
+        }
+        
+        .status.info { 
+            background: linear-gradient(135deg, #d1ecf1, #b8daff); 
+            color: #0c5460; 
+            border-left: 4px solid #17a2b8;
+        }
         
         .drawing-area {
             text-align: center;
-            margin: 20px 0;
+            margin: 25px 0;
+            position: relative;
         }
         
         #drawingCanvas {
-            border: 2px solid #dee2e6;
-            border-radius: 8px;
+            border: 3px solid #e9ecef;
+            border-radius: 15px;
             cursor: crosshair;
             background: white;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: box-shadow 0.3s ease;
+        }
+        
+        #drawingCanvas:hover {
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        }
+        
+        .drawing-indicator {
+            position: absolute;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            pointer-events: none;
+            z-index: 10;
+            animation: drawingPulse 2s infinite;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        @keyframes drawingPulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.9; }
         }
         
         .drawing-controls {
-            margin: 15px 0;
+            margin: 20px 0;
             display: flex;
             justify-content: center;
-            gap: 15px;
+            gap: 20px;
             align-items: center;
+            flex-wrap: wrap;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 15px;
+        }
+        
+        .tool-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.7);
+        }
+        
+        .tool-buttons {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .tool-btn {
+            padding: 8px 12px;
+            border: 2px solid #dee2e6;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .tool-btn:hover {
+            border-color: #667eea;
+            transform: translateY(-1px);
+        }
+        
+        .tool-btn.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-color: #667eea;
+        }
+        
+        .eraser-btn.active {
+            background: linear-gradient(135deg, #dc3545, #c82333);
+            border-color: #dc3545;
+        }
+        
+        .shape-btn.active {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            border-color: #28a745;
         }
         
         .drawing-controls label {
-            font-weight: bold;
+            font-weight: 600;
+            color: #495057;
         }
         
         .drawing-controls input[type="color"] {
-            width: 40px;
-            height: 40px;
+            width: 50px;
+            height: 50px;
             border: none;
-            border-radius: 4px;
+            border-radius: 10px;
             cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease;
+        }
+        
+        .drawing-controls input[type="color"]:hover {
+            transform: scale(1.1);
         }
         
         .drawing-controls input[type="range"] {
-            width: 100px;
+            width: 120px;
+            height: 8px;
+            border-radius: 4px;
+            background: #ddd;
+            outline: none;
+        }
+        
+        .clear-btn {
+            background: linear-gradient(135deg, #dc3545, #c82333);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s ease;
+        }
+        
+        .clear-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 25px;
+            margin-top: 20px;
+        }
+        
+        .left-panel {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .connected-users {
+            padding: 20px;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        
+        .connected-users h3 {
+            margin-bottom: 15px;
+            color: #495057;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .user-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            margin: 8px 0;
+            background: white;
+            border-radius: 10px;
+            border-left: 4px solid #6c757d;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            transition: transform 0.2s ease;
+        }
+        
+        .user-item:hover {
+            transform: translateX(3px);
+        }
+        
+        .user-item.drawing {
+            border-left-color: #28a745;
+            background: linear-gradient(135deg, #d4edda, #c3e6cb);
+        }
+        
+        .user-item.self {
+            border-left-color: #007bff;
+            background: linear-gradient(135deg, #d1ecf1, #b8daff);
+        }
+        
+        .user-name {
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .drawing-status {
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 12px;
+            background: #28a745;
+            color: white;
+            font-weight: bold;
+            animation: drawingPulse 2s infinite;
         }
         
         .activity-log {
-            height: 200px;
+            height: 300px;
             overflow-y: auto;
-            border: 1px solid #dee2e6;
-            padding: 10px;
+            border: 2px solid #e9ecef;
+            padding: 15px;
             background: #f8f9fa;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            border-radius: 4px;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+            font-size: 13px;
+            border-radius: 15px;
+            line-height: 1.4;
         }
         
         .log-entry {
-            margin: 2px 0;
-            padding: 2px 5px;
-            border-radius: 3px;
+            margin: 4px 0;
+            padding: 6px 10px;
+            border-radius: 6px;
+            border-left: 3px solid transparent;
         }
         
-        .log-entry.system { background: #e9ecef; }
-        .log-entry.drawing { background: #d1ecf1; }
-        .log-entry.error { background: #f8d7da; }
+        .log-entry.system { 
+            background: #e2e3e5; 
+            border-left-color: #6c757d;
+        }
         
-        .users-online {
-            margin-top: 15px;
-            padding: 10px;
-            background: #e9ecef;
-            border-radius: 4px;
+        .log-entry.drawing { 
+            background: #d1ecf1; 
+            border-left-color: #17a2b8;
+        }
+        
+        .log-entry.error { 
+            background: #f8d7da; 
+            border-left-color: #dc3545;
+        }
+        
+        .log-entry.user { 
+            background: #d4edda; 
+            border-left-color: #28a745;
+        }
+        
+        .connection-info {
+            padding: 20px;
+            background: linear-gradient(135deg, #e9ecef, #f8f9fa);
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        
+        .connection-info h3 {
+            margin-bottom: 15px;
+            color: #495057;
+        }
+        
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
+        
+        .info-item:last-child {
+            border-bottom: none;
+        }
+        
+        .info-label {
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .info-value {
+            color: #6c757d;
+            font-family: monospace;
+        }
+        
+        .info-value.connected {
+            color: #28a745;
+            font-weight: bold;
+        }
+        
+        .info-value.disconnected {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .room-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .room-controls input,
+            .room-controls button {
+                width: 100%;
+            }
+            
+            #drawingCanvas {
+                width: 100%;
+                height: auto;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🎨 CollabBoard Test Interface</h1>
+        <div class="header">
+            <h1>🎨 CollaboBoard</h1>
+            <p>Collaborative Drawing Board - Draw together in real-time!</p>
+        </div>
         
         <!-- Room Controls -->
         <div class="room-controls">
-            <button id="createRoomBtn">Create New Room</button>
+            <button id="createRoomBtn">🏠 Create New Room</button>
+            
             <input type="text" id="roomIdInput" placeholder="Enter Room ID (e.g., ABC123)" maxlength="6">
-            <button id="joinRoomBtn">Join Room</button>
-            <button id="leaveRoomBtn" disabled>Leave Room</button>
+            <input type="text" id="userNameInput" placeholder="Your Name" maxlength="20">
+            <button id="joinRoomBtn">🚪 Join Room</button>
+            
+            <button id="leaveRoomBtn" disabled>🚶 Leave Room</button>
         </div>
         
         <!-- Status Display -->
         <div id="statusDisplay"></div>
         
-        <!-- Drawing Area -->
-        <div class="drawing-area">
-            <canvas id="drawingCanvas" width="800" height="400" style="display: none;"></canvas>
-        </div>
-        
-        <!-- Drawing Controls -->
-        <div class="drawing-controls" id="drawingControls" style="display: none;">
-            <label for="colorPicker">Color:</label>
-            <input type="color" id="colorPicker" value="#000000">
+        <div class="main-content">
+            <!-- Left Panel - Drawing Area -->
+            <div class="left-panel">
+                <!-- Drawing Area -->
+                <div class="drawing-area">
+                    <canvas id="drawingCanvas" width="800" height="500" style="display: none;"></canvas>
+                    <div id="drawingIndicators"></div>
+                </div>
+                
+                <!-- Drawing Controls -->
+                <div class="drawing-controls" id="drawingControls" style="display: none;">
+                    <!-- Tools -->
+                    <div class="tool-group">
+                        <label>🛠️ Tools:</label>
+                        <div class="tool-buttons">
+                            <button class="tool-btn active" data-tool="pen">✏️ Pen</button>
+                            <button class="tool-btn eraser-btn" data-tool="eraser">🧽 Eraser</button>
+                            <button class="tool-btn shape-btn" data-tool="rectangle">⬜ Rectangle</button>
+                            <button class="tool-btn shape-btn" data-tool="circle">⭕ Circle</button>
+                            <button class="tool-btn shape-btn" data-tool="line">📏 Line</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Color -->
+                    <div class="tool-group">
+                        <label for="colorPicker">🎨 Color:</label>
+                        <input type="color" id="colorPicker" value="#000000">
+                    </div>
+                    
+                    <!-- Brush Size -->
+                    <div class="tool-group">
+                        <label for="brushSize">🖌️ Size:</label>
+                        <input type="range" id="brushSize" min="1" max="20" value="2">
+                        <span id="brushSizeValue">2</span>px
+                    </div>
+                    
+                    <!-- Clear Button -->
+                    <button id="clearCanvasBtn" class="clear-btn">🗑️ Clear Canvas</button>
+                </div>
+            </div>
             
-            <label for="brushSize">Brush Size:</label>
-            <input type="range" id="brushSize" min="1" max="20" value="2">
-            <span id="brushSizeValue">2</span>px
-            
-            <button id="clearCanvasBtn">Clear Canvas</button>
-        </div>
-        
-        <!-- Activity Log -->
-        <h3>Activity Log</h3>
-        <div id="activityLog" class="activity-log"></div>
-        
-        <!-- Online Users -->
-        <div class="users-online">
-            <strong>Connection Status:</strong> <span id="connectionStatus">Disconnected</span>
-            <br>
-            <strong>Current Room:</strong> <span id="currentRoom">None</span>
+            <!-- Right Panel -->
+            <div class="right-panel">
+                <!-- Connected Users -->
+                <div class="connected-users">
+                    <h3>👥 Connected Users</h3>
+                    <div id="usersList">
+                        <div style="text-align: center; color: #6c757d; padding: 20px;">
+                            No users connected
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Connection Info -->
+                <div class="connection-info">
+                    <h3>📡 Connection Info</h3>
+                    <div class="info-item">
+                        <span class="info-label">Status:</span>
+                        <span id="connectionStatus" class="info-value disconnected">Disconnected</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Room:</span>
+                        <span id="currentRoom" class="info-value">None</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Your Name:</span>
+                        <span id="currentUserName" class="info-value">Not set</span>
+                    </div>
+                </div>
+                
+                <!-- Activity Log -->
+                <div class="activity-section">
+                    <h3>📋 Activity Log</h3>
+                    <div id="activityLog" class="activity-log">
+                        <div class="log-entry system">Welcome to CollaboBoard! Create or join a room to start drawing.</div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -186,18 +562,27 @@
         // Global variables
         let connection = null;
         let currentRoomId = null;
+        let currentUserName = '';
         let isDrawing = false;
         let lastX = 0;
         let lastY = 0;
+        let connectedUsers = [];
+        let activeDrawingIndicators = new Map();
+        let currentTool = 'pen'; // 'pen', 'eraser', 'rectangle', 'circle', 'line'
+        let startX = 0;
+        let startY = 0;
+        let previewCanvas = null;
         
         // DOM Elements
         const createRoomBtn = document.getElementById('createRoomBtn');
         const joinRoomBtn = document.getElementById('joinRoomBtn');
         const leaveRoomBtn = document.getElementById('leaveRoomBtn');
         const roomIdInput = document.getElementById('roomIdInput');
+        const userNameInput = document.getElementById('userNameInput');
         const statusDisplay = document.getElementById('statusDisplay');
         const drawingCanvas = document.getElementById('drawingCanvas');
         const drawingControls = document.getElementById('drawingControls');
+        const drawingIndicators = document.getElementById('drawingIndicators');
         const colorPicker = document.getElementById('colorPicker');
         const brushSize = document.getElementById('brushSize');
         const brushSizeValue = document.getElementById('brushSizeValue');
@@ -205,6 +590,8 @@
         const activityLog = document.getElementById('activityLog');
         const connectionStatus = document.getElementById('connectionStatus');
         const currentRoomDisplay = document.getElementById('currentRoom');
+        const currentUserNameDisplay = document.getElementById('currentUserName');
+        const usersList = document.getElementById('usersList');
         
         const ctx = drawingCanvas.getContext('2d');
         
@@ -221,240 +608,567 @@
             // Connection events
             connection.onclose(() => {
                 connectionStatus.textContent = 'Disconnected';
-                logActivity('Connection lost', 'error');
+                connectionStatus.className = 'info-value disconnected';
+                logActivity('❌ Connection lost', 'error');
             });
             
             connection.onreconnected(() => {
                 connectionStatus.textContent = 'Connected';
-                logActivity('Reconnected to server', 'system');
+                connectionStatus.className = 'info-value connected';
+                logActivity('✅ Reconnected to server', 'system');
             });
             
             // Drawing events
             connection.on('ReceiveDrawingEvent', (drawingEvent) => {
                 drawOnCanvas(drawingEvent);
-                logActivity(`Drawing: ${drawingEvent.type} at (${Math.round(drawingEvent.x)}, ${Math.round(drawingEvent.y)})`, 'drawing');
+                if (drawingEvent.userId !== connection.connectionId) {
+                    logActivity(`🎨 ${drawingEvent.userName}: ${drawingEvent.type}`, 'drawing');
+                }
             });
             
             connection.on('DrawingHistory', (history) => {
-                logActivity(`Received ${history.length} drawing events from history`, 'system');
+                clearCanvas();
                 history.forEach(event => drawOnCanvas(event));
+                logActivity(`📚 Loaded ${history.length} drawing events from history`, 'system');
             });
             
-            connection.on('ClearCanvas', () => {
-                ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
-                logActivity('Canvas was cleared by another user', 'system');
+            // User management events
+            connection.on('UsersUpdated', (users) => {
+                connectedUsers = users;
+                updateUsersList();
             });
             
-            connection.on('UserJoined', (userId) => {
-                logActivity(`User ${userId.substring(0, 8)}... joined the room`, 'system');
+            connection.on('UserJoined', (user) => {
+                logActivity(`👋 ${user.userName} joined the room`, 'user');
             });
             
             connection.on('UserLeft', (userId) => {
-                logActivity(`User ${userId.substring(0, 8)}... left the room`, 'system');
+                // Remove any drawing indicators for this user
+                removeDrawingIndicator(userId);
+                logActivity(`🚶 User left the room`, 'user');
             });
             
+            connection.on('UserStartedDrawing', (user) => {
+                showDrawingIndicator(user.userId, user.userName, user.tool);
+                if (user.userId !== connection.connectionId) {
+                    const toolEmoji = getToolEmoji(user.tool);
+                    logActivity(`${toolEmoji} ${user.userName} started ${user.tool || 'drawing'}`, 'drawing');
+                }
+            });
+            
+            connection.on('UserStoppedDrawing', (user) => {
+                removeDrawingIndicator(user.userId);
+                if (user.userId !== connection.connectionId) {
+                    logActivity(`🛑 ${user.userName} stopped drawing`, 'drawing');
+                }
+            });
+            
+            connection.on('ClearCanvas', () => {
+                clearCanvas();
+                logActivity('🗑️ Canvas was cleared by another user', 'system');
+            });
+            
+            // Error handling
             connection.on('JoinRoomError', (message) => {
                 showStatus(message, 'error');
-                logActivity(`Join room error: ${message}`, 'error');
             });
             
             connection.on('DrawingError', (message) => {
                 showStatus(message, 'error');
-                logActivity(`Drawing error: ${message}`, 'error');
             });
             
             try {
                 await connection.start();
                 connectionStatus.textContent = 'Connected';
-                logActivity('Connected to SignalR hub', 'system');
+                connectionStatus.className = 'info-value connected';
+                logActivity('✅ Connected to server', 'system');
+                
+                // Enable create room button
+                createRoomBtn.disabled = false;
+                joinRoomBtn.disabled = false;
+                
             } catch (err) {
-                connectionStatus.textContent = 'Connection Failed';
-                logActivity(`Connection failed: ${err}`, 'error');
+                connectionStatus.textContent = 'Failed to connect';
+                connectionStatus.className = 'info-value disconnected';
+                logActivity('❌ Failed to connect to server: ' + err.toString(), 'error');
             }
         }
         
-        // Room Management
+        // Room management functions
         async function createRoom() {
             try {
                 const response = await fetch(`${API_BASE_URL}/api/room/create`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
                 });
                 
                 const data = await response.json();
                 
                 if (response.ok) {
+                    showStatus(`🎉 Room created successfully! Room ID: ${data.roomId}`, 'success');
                     roomIdInput.value = data.roomId;
-                    showStatus(`Room created: ${data.roomId}`, 'success');
-                    logActivity(`Created room: ${data.roomId}`, 'system');
+                    logActivity(`🏠 Created room: ${data.roomId}`, 'system');
                 } else {
-                    showStatus(data.message || 'Failed to create room', 'error');
+                    showStatus('❌ Failed to create room: ' + data.message, 'error');
                 }
-            } catch (err) {
-                showStatus('Network error creating room', 'error');
-                logActivity(`Create room error: ${err}`, 'error');
+            } catch (error) {
+                showStatus('❌ Error creating room: ' + error.message, 'error');
+                logActivity('❌ Error creating room: ' + error.message, 'error');
             }
         }
         
         async function joinRoom() {
             const roomId = roomIdInput.value.trim().toUpperCase();
+            const userName = userNameInput.value.trim();
+            
             if (!roomId) {
-                showStatus('Please enter a room ID', 'error');
+                showStatus('⚠️ Please enter a room ID', 'error');
+                return;
+            }
+            
+            if (!userName) {
+                showStatus('⚠️ Please enter your name', 'error');
+                return;
+            }
+            
+            if (roomId.length !== 6) {
+                showStatus('⚠️ Room ID must be exactly 6 characters', 'error');
                 return;
             }
             
             try {
-                // First verify room exists via REST API
+                // First check if room exists via API
                 const response = await fetch(`${API_BASE_URL}/api/room/join`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ roomId })
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        roomId: roomId,
+                        userName: userName
+                    })
                 });
                 
                 const data = await response.json();
                 
-                if (response.ok && data.success) {
-                    // Join via SignalR
-                    if (connection.state === signalR.HubConnectionState.Connected) {
-                        await connection.invoke('JoinRoom', roomId);
-                        currentRoomId = roomId;
-                        currentRoomDisplay.textContent = roomId;
-                        
-                        // Show drawing interface
-                        drawingCanvas.style.display = 'block';
-                        drawingControls.style.display = 'flex';
-                        
-                        // Update button states
-                        joinRoomBtn.disabled = true;
-                        leaveRoomBtn.disabled = false;
-                        createRoomBtn.disabled = true;
-                        
-                        showStatus(`Joined room: ${roomId}`, 'success');
-                        logActivity(`Joined room: ${roomId}`, 'system');
-                    } else {
-                        showStatus('SignalR not connected', 'error');
-                    }
-                } else {
-                    showStatus(data.message || 'Failed to join room', 'error');
+                if (!response.ok || !data.success) {
+                    showStatus('❌ ' + data.message, 'error');
+                    return;
                 }
-            } catch (err) {
-                showStatus('Network error joining room', 'error');
-                logActivity(`Join room error: ${err}`, 'error');
+                
+                // If room exists, join via SignalR
+                await connection.invoke('JoinRoom', roomId, userName);
+                
+                currentRoomId = roomId;
+                currentUserName = userName;
+                currentRoomDisplay.textContent = roomId;
+                currentUserNameDisplay.textContent = userName;
+                
+                // Show canvas and controls
+                drawingCanvas.style.display = 'block';
+                drawingControls.style.display = 'flex';
+                
+                // Update button states
+                createRoomBtn.disabled = true;
+                joinRoomBtn.disabled = true;
+                leaveRoomBtn.disabled = false;
+                roomIdInput.disabled = true;
+                userNameInput.disabled = true;
+                
+                showStatus(`✅ Successfully joined room ${roomId} as ${userName}`, 'success');
+                logActivity(`🚪 Joined room ${roomId} as ${userName}`, 'user');
+                
+            } catch (error) {
+                showStatus('❌ Error joining room: ' + error.message, 'error');
+                logActivity('❌ Error joining room: ' + error.message, 'error');
             }
         }
         
         async function leaveRoom() {
+            if (currentRoomId && connection) {
+                try {
+                    await connection.invoke('LeaveRoom', currentRoomId);
+                    
+                    currentRoomId = null;
+                    currentUserName = '';
+                    connectedUsers = [];
+                    
+                    currentRoomDisplay.textContent = 'None';
+                    currentUserNameDisplay.textContent = 'Not set';
+                    
+                    // Hide canvas and controls
+                    drawingCanvas.style.display = 'none';
+                    drawingControls.style.display = 'none';
+                    
+                    // Clear canvas and indicators
+                    clearCanvas();
+                    clearAllDrawingIndicators();
+                    updateUsersList();
+                    
+                    // Update button states
+                    createRoomBtn.disabled = false;
+                    joinRoomBtn.disabled = false;
+                    leaveRoomBtn.disabled = true;
+                    roomIdInput.disabled = false;
+                    userNameInput.disabled = false;
+                    
+                    showStatus('👋 Left the room', 'info');
+                    logActivity('🚶 Left the room', 'user');
+                    
+                } catch (error) {
+                    showStatus('❌ Error leaving room: ' + error.message, 'error');
+                    logActivity('❌ Error leaving room: ' + error.message, 'error');
+                }
+            }
+        }
+        
+        // Drawing functions
+        function setupCanvas() {
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            // Create preview canvas for shapes
+            previewCanvas = document.createElement('canvas');
+            previewCanvas.width = drawingCanvas.width;
+            previewCanvas.height = drawingCanvas.height;
+            previewCanvas.style.position = 'absolute';
+            previewCanvas.style.top = '0';
+            previewCanvas.style.left = '0';
+            previewCanvas.style.pointerEvents = 'none';
+            previewCanvas.style.zIndex = '5';
+            drawingCanvas.parentNode.appendChild(previewCanvas);
+            
+            // Mouse events
+            drawingCanvas.addEventListener('mousedown', startDrawing);
+            drawingCanvas.addEventListener('mousemove', draw);
+            drawingCanvas.addEventListener('mouseup', stopDrawing);
+            drawingCanvas.addEventListener('mouseout', stopDrawing);
+            
+            // Touch events for mobile
+            drawingCanvas.addEventListener('touchstart', handleTouch);
+            drawingCanvas.addEventListener('touchmove', handleTouch);
+            drawingCanvas.addEventListener('touchend', stopDrawing);
+            
+            // Tool selection
+            setupToolButtons();
+        }
+        
+        function setupToolButtons() {
+            const toolButtons = document.querySelectorAll('.tool-btn');
+            toolButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    // Remove active class from all buttons
+                    toolButtons.forEach(b => b.classList.remove('active'));
+                    // Add active class to clicked button
+                    btn.classList.add('active');
+                    // Update current tool
+                    currentTool = btn.dataset.tool;
+                    // Update cursor
+                    updateCanvasCursor();
+                });
+            });
+        }
+        
+        function updateCanvasCursor() {
+            switch(currentTool) {
+                case 'pen':
+                    drawingCanvas.style.cursor = 'crosshair';
+                    break;
+                case 'eraser':
+                    drawingCanvas.style.cursor = 'grab';
+                    break;
+                case 'rectangle':
+                case 'circle':
+                case 'line':
+                    drawingCanvas.style.cursor = 'crosshair';
+                    break;
+                default:
+                    drawingCanvas.style.cursor = 'crosshair';
+            }
+        }
+        
+        function getMousePos(e) {
+            const rect = drawingCanvas.getBoundingClientRect();
+            const scaleX = drawingCanvas.width / rect.width;
+            const scaleY = drawingCanvas.height / rect.height;
+            
+            return {
+                x: (e.clientX - rect.left) * scaleX,
+                y: (e.clientY - rect.top) * scaleY
+            };
+        }
+        
+        function handleTouch(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : 
+                                            e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            drawingCanvas.dispatchEvent(mouseEvent);
+        }
+        
+        function startDrawing(e) {
+            if (!currentRoomId || !connection) return;
+            
+            isDrawing = true;
+            const pos = getMousePos(e);
+            lastX = pos.x;
+            lastY = pos.y;
+            startX = pos.x;
+            startY = pos.y;
+            
+            const drawingEvent = {
+                type: 'startDrawing',
+                x: pos.x,
+                y: pos.y,
+                color: currentTool === 'eraser' ? '#FFFFFF' : colorPicker.value,
+                lineWidth: parseInt(brushSize.value),
+                tool: currentTool
+            };
+            
+            connection.invoke('SendDrawingEvent', currentRoomId, drawingEvent);
+        }
+        
+        function draw(e) {
+            if (!isDrawing || !currentRoomId || !connection) return;
+            
+            const pos = getMousePos(e);
+            
+            if (currentTool === 'pen' || currentTool === 'eraser') {
+                const drawingEvent = {
+                    type: 'drawing',
+                    x: pos.x,
+                    y: pos.y,
+                    color: currentTool === 'eraser' ? '#FFFFFF' : colorPicker.value,
+                    lineWidth: currentTool === 'eraser' ? parseInt(brushSize.value) * 2 : parseInt(brushSize.value),
+                    tool: currentTool
+                };
+                
+                connection.invoke('SendDrawingEvent', currentRoomId, drawingEvent);
+            } else {
+                // For shapes, show preview
+                drawShapePreview(startX, startY, pos.x, pos.y);
+            }
+        }
+        
+        function stopDrawing(e) {
+            if (!isDrawing || !currentRoomId || !connection) return;
+            
+            isDrawing = false;
+            const pos = e ? getMousePos(e) : { x: lastX, y: lastY };
+            
+            const drawingEvent = {
+                type: 'stopDrawing',
+                x: pos.x,
+                y: pos.y,
+                color: currentTool === 'eraser' ? '#FFFFFF' : colorPicker.value,
+                lineWidth: currentTool === 'eraser' ? parseInt(brushSize.value) * 2 : parseInt(brushSize.value),
+                tool: currentTool,
+                startX: startX,
+                startY: startY
+            };
+            
+            connection.invoke('SendDrawingEvent', currentRoomId, drawingEvent);
+            
+            // Clear preview
+            if (previewCanvas) {
+                const previewCtx = previewCanvas.getContext('2d');
+                previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+            }
+        }
+        
+        function drawOnCanvas(event) {
+            if (event.tool === 'eraser') {
+                ctx.globalCompositeOperation = 'destination-out';
+            } else {
+                ctx.globalCompositeOperation = 'source-over';
+            }
+            
+            ctx.strokeStyle = event.color;
+            ctx.lineWidth = event.lineWidth;
+            
+            if (event.type === 'startDrawing') {
+                if (event.tool === 'pen' || event.tool === 'eraser') {
+                    ctx.beginPath();
+                    ctx.moveTo(event.x, event.y);
+                }
+            } else if (event.type === 'drawing') {
+                if (event.tool === 'pen' || event.tool === 'eraser') {
+                    ctx.lineTo(event.x, event.y);
+                    ctx.stroke();
+                }
+            } else if (event.type === 'stopDrawing') {
+                if (event.tool === 'pen' || event.tool === 'eraser') {
+                    ctx.lineTo(event.x, event.y);
+                    ctx.stroke();
+                    ctx.beginPath();
+                } else if (event.tool === 'rectangle') {
+                    drawRectangle(event.startX, event.startY, event.x, event.y, event.color, event.lineWidth);
+                } else if (event.tool === 'circle') {
+                    drawCircle(event.startX, event.startY, event.x, event.y, event.color, event.lineWidth);
+                } else if (event.tool === 'line') {
+                    drawLine(event.startX, event.startY, event.x, event.y, event.color, event.lineWidth);
+                }
+            }
+            
+            // Reset composite operation
+            ctx.globalCompositeOperation = 'source-over';
+        }
+        
+        function drawShapePreview(startX, startY, endX, endY) {
+            if (!previewCanvas) return;
+            
+            const previewCtx = previewCanvas.getContext('2d');
+            previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+            
+            previewCtx.strokeStyle = colorPicker.value;
+            previewCtx.lineWidth = parseInt(brushSize.value);
+            previewCtx.lineCap = 'round';
+            previewCtx.lineJoin = 'round';
+            previewCtx.setLineDash([5, 5]); // Dashed line for preview
+            
+            if (currentTool === 'rectangle') {
+                previewCtx.strokeRect(startX, startY, endX - startX, endY - startY);
+            } else if (currentTool === 'circle') {
+                const radius = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
+                previewCtx.beginPath();
+                previewCtx.arc(startX, startY, radius, 0, 2 * Math.PI);
+                previewCtx.stroke();
+            } else if (currentTool === 'line') {
+                previewCtx.beginPath();
+                previewCtx.moveTo(startX, startY);
+                previewCtx.lineTo(endX, endY);
+                previewCtx.stroke();
+            }
+        }
+        
+        function drawRectangle(startX, startY, endX, endY, color, lineWidth) {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = lineWidth;
+            ctx.strokeRect(startX, startY, endX - startX, endY - startY);
+        }
+        
+        function drawCircle(startX, startY, endX, endY, color, lineWidth) {
+            const radius = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
+            ctx.strokeStyle = color;
+            ctx.lineWidth = lineWidth;
+            ctx.beginPath();
+            ctx.arc(startX, startY, radius, 0, 2 * Math.PI);
+            ctx.stroke();
+        }
+        
+        function drawLine(startX, startY, endX, endY, color, lineWidth) {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = lineWidth;
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+        }
+        
+        function clearCanvas() {
+            ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+        }
+        
+        async function clearCanvasForEveryone() {
             if (!currentRoomId || !connection) return;
             
             try {
-                await connection.invoke('LeaveRoom', currentRoomId);
-                
-                // Reset UI
-                currentRoomId = null;
-                currentRoomDisplay.textContent = 'None';
-                drawingCanvas.style.display = 'none';
-                drawingControls.style.display = 'none';
-                
-                // Clear canvas
-                ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
-                
-                // Update button states
-                joinRoomBtn.disabled = false;
-                leaveRoomBtn.disabled = true;
-                createRoomBtn.disabled = false;
-                
-                showStatus('Left the room', 'info');
-                logActivity('Left the room', 'system');
-            } catch (err) {
-                logActivity(`Leave room error: ${err}`, 'error');
+                await connection.invoke('ClearCanvas', currentRoomId);
+                logActivity('🗑️ You cleared the canvas', 'system');
+            } catch (error) {
+                showStatus('❌ Error clearing canvas: ' + error.message, 'error');
             }
         }
         
-        // Drawing Functions
-        function drawOnCanvas(drawingEvent) {
-            ctx.strokeStyle = drawingEvent.color;
-            ctx.lineWidth = drawingEvent.lineWidth;
-            ctx.lineCap = 'round';
+        // Drawing indicator functions
+        function showDrawingIndicator(userId, userName, tool = 'pen') {
+            // Remove existing indicator if any
+            removeDrawingIndicator(userId);
             
-            if (drawingEvent.type === 'startDrawing') {
-                ctx.beginPath();
-                ctx.moveTo(drawingEvent.x, drawingEvent.y);
-            } else if (drawingEvent.type === 'drawing') {
-                ctx.lineTo(drawingEvent.x, drawingEvent.y);
-                ctx.stroke();
-            } else if (drawingEvent.type === 'stopDrawing') {
-                ctx.stroke();
+            const indicator = document.createElement('div');
+            indicator.className = 'drawing-indicator';
+            const toolEmoji = getToolEmoji(tool);
+            indicator.textContent = `${userName} is using ${toolEmoji} ${tool}...`;
+            indicator.id = `indicator-${userId}`;
+            
+            // Position it randomly but visible
+            const canvasRect = drawingCanvas.getBoundingClientRect();
+            indicator.style.left = Math.random() * (canvasRect.width - 200) + 'px';
+            indicator.style.top = Math.random() * 50 + 10 + 'px';
+            
+            drawingIndicators.appendChild(indicator);
+            activeDrawingIndicators.set(userId, indicator);
+        }
+        
+        function getToolEmoji(tool) {
+            switch(tool) {
+                case 'pen': return '✏️';
+                case 'eraser': return '🧽';
+                case 'rectangle': return '⬜';
+                case 'circle': return '⭕';
+                case 'line': return '📏';
+                default: return '✏️';
             }
         }
         
-        async function sendDrawingEvent(type, x, y) {
-            if (!connection || !currentRoomId) return;
-            
-            const drawingEvent = {
-                type: type,
-                x: x,
-                y: y,
-                color: colorPicker.value,
-                lineWidth: parseInt(brushSize.value),
-                userId: '',
-                timestamp: new Date().toISOString()
-            };
-            
-            try {
-                await connection.invoke('SendDrawingEvent', currentRoomId, drawingEvent);
-            } catch (err) {
-                logActivity(`Send drawing event error: ${err}`, 'error');
+        function removeDrawingIndicator(userId) {
+            const indicator = activeDrawingIndicators.get(userId);
+            if (indicator && indicator.parentNode) {
+                indicator.parentNode.removeChild(indicator);
             }
+            activeDrawingIndicators.delete(userId);
         }
         
-        // Canvas Event Handlers
-        drawingCanvas.addEventListener('mousedown', (e) => {
-            if (!currentRoomId) return;
-            
-            isDrawing = true;
-            const rect = drawingCanvas.getBoundingClientRect();
-            lastX = e.clientX - rect.left;
-            lastY = e.clientY - rect.top;
-            
-            sendDrawingEvent('startDrawing', lastX, lastY);
-        });
+        function clearAllDrawingIndicators() {
+            drawingIndicators.innerHTML = '';
+            activeDrawingIndicators.clear();
+        }
         
-        drawingCanvas.addEventListener('mousemove', (e) => {
-            if (!isDrawing || !currentRoomId) return;
-            
-            const rect = drawingCanvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            
-            sendDrawingEvent('drawing', x, y);
-            
-            lastX = x;
-            lastY = y;
-        });
-        
-        drawingCanvas.addEventListener('mouseup', () => {
-            if (!isDrawing || !currentRoomId) return;
-            
-            isDrawing = false;
-            sendDrawingEvent('stopDrawing', lastX, lastY);
-        });
-        
-        drawingCanvas.addEventListener('mouseleave', () => {
-            if (isDrawing && currentRoomId) {
-                isDrawing = false;
-                sendDrawingEvent('stopDrawing', lastX, lastY);
+        // UI update functions
+        function updateUsersList() {
+            if (connectedUsers.length === 0) {
+                usersList.innerHTML = '<div style="text-align: center; color: #6c757d; padding: 20px;">No users connected</div>';
+                return;
             }
-        });
+            
+            const currentConnectionId = connection ? connection.connectionId : '';
+            
+            usersList.innerHTML = connectedUsers.map(user => {
+                const isSelf = user.connectionId === currentConnectionId;
+                const isDrawing = user.isDrawing;
+                
+                let userClass = 'user-item';
+                if (isSelf) userClass += ' self';
+                if (isDrawing) userClass += ' drawing';
+                
+                return `
+                    <div class="${userClass}">
+                        <span class="user-name">
+                            ${user.userName}${isSelf ? ' (You)' : ''}
+                        </span>
+                        ${isDrawing ? '<span class="drawing-status">Drawing</span>' : ''}
+                    </div>
+                `;
+            }).join('');
+        }
         
-        // UI Helper Functions
         function showStatus(message, type) {
             statusDisplay.innerHTML = `<div class="status ${type}">${message}</div>`;
-            setTimeout(() => {
-                statusDisplay.innerHTML = '';
-            }, 5000);
+            
+            // Auto-hide success and info messages after 5 seconds
+            if (type === 'success' || type === 'info') {
+                setTimeout(() => {
+                    statusDisplay.innerHTML = '';
+                }, 5000);
+            }
         }
         
-        function logActivity(message, type = 'info') {
+        function logActivity(message, type) {
             const timestamp = new Date().toLocaleTimeString();
             const logEntry = document.createElement('div');
             logEntry.className = `log-entry ${type}`;
@@ -462,39 +1176,54 @@
             
             activityLog.appendChild(logEntry);
             activityLog.scrollTop = activityLog.scrollHeight;
+            
+            // Keep only last 100 entries
+            if (activityLog.children.length > 100) {
+                activityLog.removeChild(activityLog.firstChild);
+            }
         }
         
-        // Event Listeners
+        // Event listeners
         createRoomBtn.addEventListener('click', createRoom);
         joinRoomBtn.addEventListener('click', joinRoom);
         leaveRoomBtn.addEventListener('click', leaveRoom);
+        clearCanvasBtn.addEventListener('click', clearCanvasForEveryone);
         
-        brushSize.addEventListener('input', (e) => {
-            brushSizeValue.textContent = e.target.value;
-        });
-        
-        clearCanvasBtn.addEventListener('click', async () => {
-            if (!currentRoomId || !connection) {
-                // If not in a room, just clear locally
-                ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
-                return;
-            }
-            
-            try {
-                // Send clear canvas event to all users in the room
-                await connection.invoke('ClearCanvas', currentRoomId);
-                logActivity('Canvas cleared', 'system');
-            } catch (err) {
-                logActivity(`Clear canvas error: ${err}`, 'error');
-                // Fallback to local clear if SignalR fails
-                ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+        // Enter key support
+        roomIdInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !joinRoomBtn.disabled) {
+                joinRoom();
             }
         });
         
-        // Initialize everything
+        userNameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !joinRoomBtn.disabled) {
+                joinRoom();
+            }
+        });
+        
+        // Brush size display update
+        brushSize.addEventListener('input', () => {
+            brushSizeValue.textContent = brushSize.value;
+        });
+        
+        // Auto-format room ID input
+        roomIdInput.addEventListener('input', (e) => {
+            e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        });
+        
+        // Initialize the application
         document.addEventListener('DOMContentLoaded', () => {
-            logActivity('Application started', 'system');
+            setupCanvas();
             initializeSignalR();
+            logActivity('🚀 CollabBoard initialized', 'system');
+        });
+        
+        // Handle page unload
+        window.addEventListener('beforeunload', () => {
+            if (currentRoomId && connection) {
+                connection.invoke('LeaveRoom', currentRoomId);
+            }
         });
     </script>
 </body>

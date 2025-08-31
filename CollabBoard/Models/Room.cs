@@ -6,6 +6,7 @@ public class Room
 {
     public string RoomId { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public HashSet<string> ConnectedUsers { get; set; } = new HashSet<string>();
+    public Dictionary<string, ConnectedUser> ConnectedUsers { get; set; } =
+        new Dictionary<string, ConnectedUser>();
     public List<DrawingEvent> DrawingHistory { get; set; } = new List<DrawingEvent>();
 }
